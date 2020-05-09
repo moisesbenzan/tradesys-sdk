@@ -22,6 +22,8 @@ class XTBClient(IBroker):
         return self.authenticated
 
     def connect_with_credentials(self, credentials: Credentials) -> bool:
+        if credentials.is_token:
+            raise TypeError("XTB cannot accept a token credentials.")
         return self.connect(credentials.username, credentials.password)
 
     def disconnect(self) -> None:
@@ -119,7 +121,10 @@ class XTBClient(IBroker):
         raise NotImplementedError("This feature is still under development.")
 
     def get_server_time(self) -> TimeStamp:
-        raise NotImplementedError("This feature is still under development.")
+        res = self.client.commandExecute("getServerTime")
+        assert res['status'] is True
+        data = res['returnData']
+        return TimeStamp(time_value=data['time'], unix=True, milliseconds=True)
 
     def get_version(self) -> str:
         res = self.client.commandExecute("getVersion")
