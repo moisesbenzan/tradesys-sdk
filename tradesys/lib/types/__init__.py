@@ -1,6 +1,6 @@
 from typing import Union
-from . import constants
 from datetime import datetime
+from . import constants
 
 
 class User(object):

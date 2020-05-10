@@ -1,5 +1,5 @@
-from lib.brokers import XTBClient
-from lib.credentials.loaders import JsonPasswordCredentialLoader
+from tradesys.lib.brokers import XTBClient
+from tradesys.lib.credentials.loaders import JsonPasswordCredentialLoader
 
 if __name__ == '__main__':
     client = XTBClient()
@@ -9,8 +9,8 @@ if __name__ == '__main__':
     # target = client.get_available_symbols()[0]
     # new_sym = client.get_symbol(target)
     #
-    sym = client.get_symbol("USDJPY")
-    comm = client.get_commission(2.0, sym)
+    # sym = client.get_symbol("USDJPY")
+    # comm = client.get_commission(2.0, sym)
     # print(target)
     # print(new_sym)
-    print(comm)
+    print(client.get_server_time())

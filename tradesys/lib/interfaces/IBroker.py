@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Union, List, Tuple
-from lib.types import Symbol, Commission, User, AccountBalance, TimeStamp, TradeTransaction, Credentials
 import difflib
+from ..types import Symbol, Commission, User, AccountBalance, TimeStamp, TradeTransaction, Credentials
 
 
 class IBroker(ABC):
