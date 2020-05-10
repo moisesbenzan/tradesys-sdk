@@ -51,7 +51,7 @@ pages:
   stage: publish
   script:
     - pip install pdoc3
-    - export PYTHONWARNINGS='error::UserWarning
+    - export PYTHONWARNINGS='error::UserWarning'
     - pdoc --html --ouput-dir public/ tradesys
     - mv public/tradesys/* public
     - "rm -r public/tradesys"
