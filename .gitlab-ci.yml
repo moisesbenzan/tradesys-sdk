@@ -1,0 +1,62 @@
+# Official language image. Look for the different tagged releases at:
+# https://hub.docker.com/r/library/python/tags/
+image: python:3
+stages:
+  - test
+  - publish
+
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+# Pip's cache doesn't store the python packages
+# https://pip.pypa.io/en/stable/reference/pip_install/#caching
+#
+# If you want to also cache the installed packages, you have to install
+# them in a virtualenv and cache it as well.
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+before_script:
+  - python -V  # Print out python version for debugging
+  - pip install virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+
+test:
+  stage: test
+  script:
+    - pip install pytest tox flake8
+    - tox
+
+publish:
+  stage: publish
+  script:
+    - pip install --upgrade setuptools wheel
+    - pip install --upgrade twine
+    - python setup.py sdist bdist_wheel
+    # Publish package to Pypi
+    - python -m twine upload dist/*
+
+  artifacts:
+    paths:
+      - dist/
+  only:
+    - tags
+
+pages:
+  stage: publish
+  script:
+    - pip install pdoc3
+    - export PYTHONWARNINGS='error::UserWarning
+    - pdoc --html --ouput-dir public/ tradesys
+    - mv public/tradesys/* public
+    - "rm -r public/tradesys"
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
