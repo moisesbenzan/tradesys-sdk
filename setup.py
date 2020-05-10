@@ -33,6 +33,10 @@ setuptools.setup(
     keywords="trading forex stocks lib",
     license="GNU",
     url="https://github.com/moisesbenzan/tradesys-sdk",
+    project_urls={
+        'Documentation': 'https://tradesys.gitlab.io/tradesys-sdk/',
+        'Source': 'https://github.com/moisesbenzan/tradesys-sdk',
+    },
     packages=setuptools.find_packages(),
     install_requires=[],
     classifiers=[
