@@ -28,17 +28,24 @@ class Commission(object):
 
 
 class AccountBalance(object):
-    def __init__(self):
-        self.balance = 0.0
-        self.credit = 0.0
-        self.currency = "USD"
-        self.equity = 0.0
-        self.margin = 0.0
-        self.free_margin = 0.0
+    def __init__(self, balance: float = 0.0, credit: float = 0.0, currency: str = "USD", equity: float = 0.0,
+                 margin: float = 0.0, free_margin: float = 0.0):
+        self.balance = balance
+        self.credit = credit
+        self.currency = currency
+        self.equity = equity
+        self.margin = margin
+        self.free_margin = free_margin
 
     @property
     def margin_level(self):
-        return 100*(self.free_margin/self.margin)
+        if self.margin == 0.0:
+            return 0.0
+
+        return 100 * (self.equity / self.margin)
+
+    def __repr__(self):
+        return f"Account balance of {self.balance} {self.currency}.\nTotal equity: {self.equity} {self.currency}.\nMargin level: {self.margin_level}%."
 
 
 class TradeTransaction:

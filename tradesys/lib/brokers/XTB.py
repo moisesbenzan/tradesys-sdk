@@ -118,7 +118,17 @@ class XTBClient(IBroker):
         raise NotImplementedError("This feature is still under development.")
 
     def get_account_balance(self) -> AccountBalance:
-        raise NotImplementedError("This feature is still under development.")
+        res = self.client.commandExecute("getMarginLevel")
+        assert res['status'] is True
+        data = res['returnData']
+        return AccountBalance(
+            balance=data["balance"],
+            credit=data['credit'],
+            currency=data['currency'],
+            equity=data['equity'],
+            margin=data['margin'],
+            free_margin=data['margin_free']
+        )
 
     def get_server_time(self) -> TimeStamp:
         res = self.client.commandExecute("getServerTime")
