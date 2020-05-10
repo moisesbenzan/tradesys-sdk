@@ -310,7 +310,7 @@ def procNewsExample(msg):
 
 def main():
     # enter your login credentials here
-    userId = 11048558
+    userId = 0
     password = ""
 
     # create & connect to RR socket
