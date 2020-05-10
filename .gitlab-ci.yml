@@ -28,6 +28,8 @@ before_script:
 
 include:
   - template: License-Scanning.gitlab-ci.yml
+  - template: Dependency-Scanning.gitlab-ci.yml
+  - template: SAST.gitlab-ci.yml
 
 test:
   stage: test
