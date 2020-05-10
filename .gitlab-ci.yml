@@ -26,6 +26,9 @@ before_script:
   - virtualenv venv
   - source venv/bin/activate
 
+include:
+  - template: License-Scanning.gitlab-ci.yml
+
 test:
   stage: test
   script:
