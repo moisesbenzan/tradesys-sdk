@@ -10,6 +10,34 @@ class XTBClient(IBroker):
         self.client = APIClient()
         self.streamSessionId = None
 
+    def verify_response(self, response: dict) -> dict:
+        """Verifies that the response received from XTB is successful, else raises error.
+
+        Validates the response received from the XTB API Connector and extracts the data portion from it.
+
+        Args:
+            response: A XTB client response object.
+
+        Returns:
+            A dict mapping containing the extracted response data from the passed response object. For example:
+            {
+                "balance": 995800269.43,
+                "credit": 1000.00,
+                "currency": "PLN",
+                "equity": 995985397.56,
+                "margin": 572634.43,
+                "margin_free": 995227635.00,
+                "margin_level": 173930.41
+            }
+
+        Raises:
+            AssertionError: The response code received indicated that the operation was not successful.
+        """
+        if not response.get("status", False):
+            raise AssertionError("Operation was not successful.")
+
+        return response['returnData']
+
     def connect(self, user: Union[int, str] = None, password: str = None) -> bool:
         login_response = self.client.commandExecute('login', dict(userId=user, password=password))
         if login_response['status'] is False:
