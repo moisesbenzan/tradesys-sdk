@@ -28,7 +28,7 @@ class IBroker(ABC):
 
     def search_symbol(self, symbol: str) -> Union[None, Symbol]:
         all_symbols = self.get_available_symbols()
-        all_symbols_str = [sym.symbol for sym in all_symbols]
+        all_symbols_str = [sym.ticker for sym in all_symbols]
         matches = difflib.get_close_matches(symbol, all_symbols_str, 3)
         if len(matches) == 1:
             return self.get_symbol(str(matches[0]))
@@ -71,7 +71,7 @@ class IBroker(ABC):
         pass
 
     @abstractmethod
-    def open_buy_position(self, transaction: TradeTransaction) -> Tuple[bool, TradeTransaction]:
+    def open_position(self, transaction: TradeTransaction) -> TradeTransaction:
         pass
 
 

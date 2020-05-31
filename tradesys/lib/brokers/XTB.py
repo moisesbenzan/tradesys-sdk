@@ -62,16 +62,13 @@ class XTBClient(IBroker):
         if type(symbol) == str:
             symbol_command = self.client.commandExecute("getSymbol", dict(symbol=symbol))
         elif type(symbol) == Symbol:
-            symbol_command = self.client.commandExecute("getSymbol", dict(symbol=symbol.symbol))
+            symbol_command = self.client.commandExecute("getSymbol", dict(symbol=symbol.ticker))
         else:
             raise TypeError("Passed parameter is not of type Symbol or str.")
 
-        # Check status
-        assert symbol_command['status'] is True
-
         # Return result
-        symbol = symbol_command['returnData']
-        return Symbol(symbol=symbol['symbol'],
+        symbol = self.verify_response(symbol_command)
+        return Symbol(ticker=symbol['symbol'],
                       ask=symbol['ask'],
                       bid=symbol['bid'],
                       category=symbol['categoryName'],
@@ -97,10 +94,10 @@ class XTBClient(IBroker):
 
     def get_available_symbols(self) -> List[Symbol]:
         response = self.client.commandExecute('getAllSymbols')
-        symbols = response['returnData']
+        symbols = self.verify_response(response)
         available_symbols = []
         for symbol in symbols:
-            s = Symbol(symbol=symbol['symbol'],
+            s = Symbol(ticker=symbol['symbol'],
                        ask=symbol['ask'],
                        bid=symbol['bid'],
                        category=symbol['categoryName'],
@@ -131,13 +128,11 @@ class XTBClient(IBroker):
         if type(symbol) == str:
             res = self.client.commandExecute("getCommissionDef", dict(symbol=symbol, volume=volume))
         elif type(symbol) == Symbol:
-            res = self.client.commandExecute("getCommissionDef", dict(symbol=symbol.symbol, volume=volume))
+            res = self.client.commandExecute("getCommissionDef", dict(symbol=symbol.ticker, volume=volume))
         else:
             raise TypeError("Passed parameter is not of type Symbol or str.")
 
-        assert res['status'] is True
-
-        commission = res['returnData']
+        commission = self.verify_response(res)
 
         return Commission(commission=commission['commission'],
                           exchange_rate=commission['rateOfExchange'])
@@ -147,8 +142,7 @@ class XTBClient(IBroker):
 
     def get_account_balance(self) -> AccountBalance:
         res = self.client.commandExecute("getMarginLevel")
-        assert res['status'] is True
-        data = res['returnData']
+        data = self.verify_response(res)
         return AccountBalance(
             balance=data["balance"],
             credit=data['credit'],
@@ -160,30 +154,38 @@ class XTBClient(IBroker):
 
     def get_server_time(self) -> TimeStamp:
         res = self.client.commandExecute("getServerTime")
-        assert res['status'] is True
-        data = res['returnData']
+
+        data = self.verify_response(res)
         return TimeStamp(time_value=data['time'], unix=True, milliseconds=True)
 
     def get_version(self) -> str:
         res = self.client.commandExecute("getVersion")
-        assert res['status'] is True
 
-        return res['returnData']['version']
+        return self.verify_response(res)['version']
 
     def connection_status(self) -> bool:
         res = self.client.commandExecute("ping")
-        try:
-            # Leveraging the fact that None type is falsy.
-            if res['status']:
-                return True
-        except:
-            # If for some reason it fails (it shouldn't) just ignore and return default False
-            pass
-
-        return False
+        return res.get("status", False)
 
     def check_transaction_status(self, transaction: TradeTransaction) -> bool:
-        raise NotImplementedError("This feature is still under development.")
+        res = self.client.commandExecute("tradeTransactionStatus", dict(order=transaction.order_number))
+        return self.verify_response(res)['requestStatus']
 
-    def open_buy_position(self, transaction: TradeTransaction) -> Tuple[bool, TradeTransaction]:
-        raise NotImplementedError("This feature is still under development.")
+    def open_position(self, transaction: TradeTransaction) -> TradeTransaction:
+        tt_info = {
+            'cmd': transaction.operation,
+            'customComment': transaction.comment,
+            'expiration': transaction.expiration,
+            'offset': transaction.trailing_offset,
+            'order': transaction.order_number,
+            'price': transaction.price,
+            'sl': transaction.stop_loss_price,
+            'symbol': transaction.symbol.ticker,
+            'tp': transaction.take_profit_price,
+            'type': transaction.transaction_type,
+            'volume': transaction.volume
+        }
+
+        res = self.client.commandExecute("tradeTransaction", dict(tradeTransInfo=tt_info))
+        transaction.order_number = self.verify_response(res)['order']
+        return transaction

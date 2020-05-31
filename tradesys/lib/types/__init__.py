@@ -48,19 +48,6 @@ class AccountBalance(object):
         return f"Account balance of {self.balance} {self.currency}.\nTotal equity: {self.equity} {self.currency}.\nMargin level: {self.margin_level}%."
 
 
-class TradeTransaction:
-    def __init__(self):
-        self.operation = constants.TransactionSide.BUY
-        self.comment = ""
-        self.trailing_offset = 0
-        self.order_number = 0
-        self.price = 0.0
-        self.stop_loss_price = 0.0
-        self.symbol = Symbol("BTC")
-        self.take_profit_price = 0.0
-        self.transaction_type = constants.TransactionType.ORDER_OPEN
-        self.volume = 0.0
-
 
 class TimeStamp:
     def __init__(self, time_value: Union[str, int, float], unix: bool = False, milliseconds: bool = False):
@@ -79,7 +66,7 @@ class TimeStamp:
 
 
 class Symbol(object):
-    def __init__(self, symbol: str = "", ask: float = 0.0, bid: float = 0.0, category: str = "CFD",
+    def __init__(self, ticker: str = "", ask: float = 0.0, bid: float = 0.0, category: str = "CFD",
                  contract_size: float = 0.0, currency: str = "USD", currency_pair: bool = False,
                  currency_profit: str = "USD", description: Union[None, str] = None,
                  expiration: Union[None, TimeStamp] = None, high: float = 0.0, initial_margin: float = 0.0,
@@ -87,7 +74,7 @@ class Symbol(object):
                  lot_step: float = 0.0, low: float = 0.0, pip_precision: int = 1, price_precision: int = 1,
                  shortable: bool = False, time: Union[None, TimeStamp] = None):
 
-        self.symbol = symbol
+        self.ticker = ticker
         self.ask = ask
         self.bid = bid
         self.category = category
@@ -115,8 +102,30 @@ class Symbol(object):
             self.time = time
 
     def __repr__(self):
-        return f"Symbol(symbol={self.symbol}, ask={self.ask}, bid={self.bid}, spread={abs(self.ask - self.bid)}, currency={self.currency}, " \
+        return f"Symbol(symbol={self.ticker}, ask={self.ask}, bid={self.bid}, spread={abs(self.ask - self.bid)}, currency={self.currency}, " \
                f"time='{self.time}')"
+
+
+class TradeTransaction(object):
+    def __init__(self, symbol: Symbol, operation: int = constants.TransactionSide.BUY_LIMIT, comment: str = "",
+                 expiration: int = 0, trailing_offset: int = 0, order: int = 0, price: float = 0.0,
+                 stop_loss: float = 0.0, take_profit: float = 0.0, volume: float = 0.1,
+                 transaction_type: int = constants.TransactionType.ORDER_OPEN
+                 ):
+        self.operation = operation
+        self.comment = comment
+        self.expiration = expiration
+        self.trailing_offset = trailing_offset
+        self.order_number = order
+        self.price = price
+        self.stop_loss_price = stop_loss
+        self.symbol = symbol
+        self.take_profit_price = take_profit
+        self.transaction_type = transaction_type
+        self.volume = volume
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 
 class Credentials(object):
