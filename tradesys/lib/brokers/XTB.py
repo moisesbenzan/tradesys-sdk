@@ -1,7 +1,180 @@
 from typing import Tuple, Union, List
 from ..connectors.xAPIConnector import APIClient
+import socket
+import ssl
+import json
+import time
+from threading import Thread
 from ..interfaces.IBroker import IBroker
+from ..interfaces.IEventHandler import IEventHandlers
 from ..types import TradeTransaction, TimeStamp, AccountBalance, User, Symbol, Commission, Credentials
+
+
+class XTBStreamingClient(object):
+
+    def __init__(self, streaming_session: str, event_handlers: Union[None, IEventHandlers] = None, address: str = 'xapi.xtb.com', port: int = 5125, encrypt=True):
+        # Socket parameters
+        self._maxConnectionRetries = 3
+        self._apiTimeout = 100
+
+        self._ssl = encrypt
+        if not self._ssl:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        else:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket = ssl.wrap_socket(sock)
+        self.conn = self.socket
+        self._timeout = None
+        self._address = address
+        self._port = port
+        self._decoder = json.JSONDecoder()
+        self._receivedData = ''
+
+        # XTB Params
+        self._ssId = streaming_session
+        self.event_handlers = event_handlers
+
+        if not self.connect():
+            raise Exception("Cannot connect to streaming on " + address + ":" + str(port) + " after " + str(
+                self._maxConnectionRetries) + " retries")
+
+        self._running = True
+        self._t = Thread(target=self._readStream, args=())
+        self._t.setDaemon(True)
+        self._t.start()
+
+    def connect(self):
+        for i in range(self._maxConnectionRetries):
+            try:
+                self.socket.connect((self._address, self._port))
+            except socket.error as msg:
+                time.sleep(0.25)
+                continue
+            return True
+        return False
+
+    def _sendObj(self, obj: dict):
+        msg = json.dumps(obj)
+        self._waitingSend(msg)
+
+    def _waitingSend(self, msg: str):
+        if self.socket:
+            sent = 0
+            msg = msg.encode('utf-8')
+            while sent < len(msg):
+                sent += self.conn.send(msg[sent:])
+                time.sleep(self._apiTimeout / 1000)
+
+    def _read(self, bytes_size: int = 4096):
+        if not self.socket:
+            raise RuntimeError("socket connection broken")
+        resp = None
+        while True:
+            char = self.conn.recv(bytes_size).decode()
+            self._receivedData += char
+            try:
+                (resp, size) = self._decoder.raw_decode(self._receivedData)
+                if size == len(self._receivedData):
+                    self._receivedData = ''
+                    break
+                elif size < len(self._receivedData):
+                    self._receivedData = self._receivedData[size:].strip()
+                    break
+            except ValueError as e:
+                continue
+        return resp
+
+    def _readObj(self):
+        msg = self._read()
+        return msg
+
+    def close(self):
+        self._closeSocket()
+        if self.socket is not self.conn:
+            self._closeConnection()
+
+    def _closeSocket(self):
+        self.socket.close()
+
+    def _closeConnection(self):
+        self.conn.close()
+
+    # XTB streaming stuff
+    def disconnect(self):
+        self._running = False
+        self._t.join()
+        self.close()
+
+    def execute(self, dictionary: dict):
+        self._sendObj(dictionary)
+
+    def default_handler(self, msg):
+        print(f"Received unhandled tick: {msg}")
+
+    def _readStream(self):
+        while self._running:
+            msg = self._readObj()
+            cmd = msg["command"]
+            if cmd == 'tickPrices':
+                self.event_handlers.on_price_update(msg['data'])
+            elif msg["command"] == 'trade':
+                self.event_handlers.on_trade_update(msg['data'])
+            elif msg["command"] == "balance":
+                self.event_handlers.on_balance_update(msg['data'])
+            elif msg["command"] == "tradeStatus":
+                self.event_handlers.on_trade_status_update(msg['data'])
+            elif msg["command"] == "profit":
+                self.event_handlers.on_profit_update(msg['data'])
+            elif msg["command"] == "news":
+                self.event_handlers.on_news_update(msg['data'])
+            else:
+                # Anything else
+                self.event_handlers.on_unhandled_update(msg['data'])
+
+    # XTB subscription stuff
+    def subscribePrice(self, symbol):
+        self.execute(dict(command='getTickPrices', symbol=symbol, streamSessionId=self._ssId))
+
+    def subscribePrices(self, symbols):
+        for symbolX in symbols:
+            self.subscribePrice(symbolX)
+
+    def subscribeTrades(self):
+        self.execute(dict(command='getTrades', streamSessionId=self._ssId))
+
+    def subscribeBalance(self):
+        self.execute(dict(command='getBalance', streamSessionId=self._ssId))
+
+    def subscribeTradeStatus(self):
+        self.execute(dict(command='getTradeStatus', streamSessionId=self._ssId))
+
+    def subscribeProfits(self):
+        self.execute(dict(command='getProfits', streamSessionId=self._ssId))
+
+    def subscribeNews(self):
+        self.execute(dict(command='getNews', streamSessionId=self._ssId))
+
+    def unsubscribePrice(self, symbol):
+        self.execute(dict(command='stopTickPrices', symbol=symbol, streamSessionId=self._ssId))
+
+    def unsubscribePrices(self, symbols):
+        for symbolX in symbols:
+            self.unsubscribePrice(symbolX)
+
+    def unsubscribeTrades(self):
+        self.execute(dict(command='stopTrades', streamSessionId=self._ssId))
+
+    def unsubscribeBalance(self):
+        self.execute(dict(command='stopBalance', streamSessionId=self._ssId))
+
+    def unsubscribeTradeStatus(self):
+        self.execute(dict(command='stopTradeStatus', streamSessionId=self._ssId))
+
+    def unsubscribeProfits(self):
+        self.execute(dict(command='stopProfits', streamSessionId=self._ssId))
+
+    def unsubscribeNews(self):
+        self.execute(dict(command='stopNews', streamSessionId=self._ssId))
 
 
 class XTBClient(IBroker):

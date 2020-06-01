@@ -1,1 +1,1 @@
-from .XTB import XTBClient
+from .XTB import XTBClient, XTBStreamingClient
