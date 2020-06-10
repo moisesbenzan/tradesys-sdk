@@ -1,5 +1,4 @@
 from typing import Tuple, Union, List
-from ..connectors.xAPIConnector import APIClient
 import socket
 import ssl
 import json
@@ -176,13 +175,108 @@ class XTBStreamingClient(object):
     def unsubscribeNews(self):
         self.execute(dict(command='stopNews', streamSessionId=self._ssId))
 
-
 class XTBClient(IBroker):
+    def __init__(self, address: str = 'xapi.xtb.com', port: int = 5124, encrypt=True):
+        # Socket parameters
+        self._maxConnectionRetries = 3
+        self._apiTimeout = 100
 
-    def __init__(self):
-        self.client = APIClient()
+        self._ssl = encrypt
+        if not self._ssl:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        else:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket = ssl.wrap_socket(sock)
+        self.conn = self.socket
+        self._timeout = None
+        self._address = address
+        self._port = port
+        self._decoder = json.JSONDecoder()
+        self._receivedData = ''
+
+        # XTB Streaming client injection
         self.streamSessionId = None
+        self.streaming = None
 
+        if not self._connect():
+            raise Exception("Cannot connect to streaming on " + address + ":" + str(port) + " after " + str(
+                self._maxConnectionRetries) + " retries")
+
+    # START Socket section
+    def _connect(self):
+        for i in range(self._maxConnectionRetries):
+            try:
+                self.socket.connect((self._address, self._port))
+            except socket.error as msg:
+                time.sleep(0.25)
+                continue
+            return True
+        return False
+
+    def _sendObj(self, obj: dict):
+        msg = json.dumps(obj)
+        self._waitingSend(msg)
+
+    def _waitingSend(self, msg: str):
+        if self.socket:
+            sent = 0
+            msg = msg.encode('utf-8')
+            while sent < len(msg):
+                sent += self.conn.send(msg[sent:])
+                time.sleep(self._apiTimeout / 1000)
+
+    def _read(self, bytes_size: int = 4096):
+        if not self.socket:
+            raise RuntimeError("socket connection broken")
+        resp = None
+        while True:
+            char = self.conn.recv(bytes_size).decode()
+            self._receivedData += char
+            try:
+                (resp, size) = self._decoder.raw_decode(self._receivedData)
+                if size == len(self._receivedData):
+                    self._receivedData = ''
+                    break
+                elif size < len(self._receivedData):
+                    self._receivedData = self._receivedData[size:].strip()
+                    break
+            except ValueError as e:
+                continue
+        return resp
+
+    def _readObj(self):
+        msg = self._read()
+        return msg
+
+    def close(self):
+        self._closeSocket()
+        if self.socket is not self.conn:
+            self._closeConnection()
+
+    def _closeSocket(self):
+        self.socket.close()
+
+    def _closeConnection(self):
+        self.conn.close()
+
+    # END Socket Section
+    # START API Section
+
+    def execute(self, dictionary):
+        self._sendObj(dictionary)
+        return self._readObj()
+
+    def _disconnect(self):
+        self.close()
+
+    def commandExecute(self, commandName, arguments=None):
+        if arguments is None:
+            arguments = dict()
+        cmd = dict([('command', commandName), ('arguments', arguments)])
+        return self.execute(cmd)
+
+    # END API Section
+    # START Custom Section
     def verify_response(self, response: dict) -> dict:
         """Verifies that the response received from XTB is successful, else raises error.
 
@@ -212,13 +306,14 @@ class XTBClient(IBroker):
         return response['returnData']
 
     def connect(self, user: Union[int, str] = None, password: str = None) -> bool:
-        login_response = self.client.commandExecute('login', dict(userId=user, password=password))
+        login_response = self.commandExecute('login', dict(userId=user, password=password))
         if login_response['status'] is False:
             print(
                 f"Authentication error. Error code: {login_response['errorCode']}\nError message: {login_response['errorDescr']}")
             return self.authenticated
 
         self.streamSessionId = login_response['streamSessionId']
+        self.streaming = XTBStreamingClient(self.streamSessionId)
         self.authenticated = login_response['status']
         return self.authenticated
 
@@ -228,14 +323,14 @@ class XTBClient(IBroker):
         return self.connect(credentials.username, credentials.password)
 
     def disconnect(self) -> None:
-        self.client.commandExecute('logout')
-        self.client.disconnect()
+        self.commandExecute('logout')
+        self.disconnect()
 
     def get_symbol(self, symbol: Union[str, Symbol]) -> Symbol:
         if type(symbol) == str:
-            symbol_command = self.client.commandExecute("getSymbol", dict(symbol=symbol))
+            symbol_command = self.commandExecute("getSymbol", dict(symbol=symbol))
         elif type(symbol) == Symbol:
-            symbol_command = self.client.commandExecute("getSymbol", dict(symbol=symbol.ticker))
+            symbol_command = self.commandExecute("getSymbol", dict(symbol=symbol.ticker))
         else:
             raise TypeError("Passed parameter is not of type Symbol or str.")
 
@@ -266,7 +361,7 @@ class XTBClient(IBroker):
                       )
 
     def get_available_symbols(self) -> List[Symbol]:
-        response = self.client.commandExecute('getAllSymbols')
+        response = self.commandExecute('getAllSymbols')
         symbols = self.verify_response(response)
         available_symbols = []
         for symbol in symbols:
@@ -299,9 +394,9 @@ class XTBClient(IBroker):
 
     def get_commission(self, volume: float, symbol: Union[str, Symbol]) -> Commission:
         if type(symbol) == str:
-            res = self.client.commandExecute("getCommissionDef", dict(symbol=symbol, volume=volume))
+            res = self.commandExecute("getCommissionDef", dict(symbol=symbol, volume=volume))
         elif type(symbol) == Symbol:
-            res = self.client.commandExecute("getCommissionDef", dict(symbol=symbol.ticker, volume=volume))
+            res = self.commandExecute("getCommissionDef", dict(symbol=symbol.ticker, volume=volume))
         else:
             raise TypeError("Passed parameter is not of type Symbol or str.")
 
@@ -314,7 +409,7 @@ class XTBClient(IBroker):
         raise NotImplementedError("This feature is still under development.")
 
     def get_account_balance(self) -> AccountBalance:
-        res = self.client.commandExecute("getMarginLevel")
+        res = self.commandExecute("getMarginLevel")
         data = self.verify_response(res)
         return AccountBalance(
             balance=data["balance"],
@@ -326,22 +421,22 @@ class XTBClient(IBroker):
         )
 
     def get_server_time(self) -> TimeStamp:
-        res = self.client.commandExecute("getServerTime")
+        res = self.commandExecute("getServerTime")
 
         data = self.verify_response(res)
         return TimeStamp(time_value=data['time'], unix=True, milliseconds=True)
 
     def get_version(self) -> str:
-        res = self.client.commandExecute("getVersion")
+        res = self.commandExecute("getVersion")
 
         return self.verify_response(res)['version']
 
     def connection_status(self) -> bool:
-        res = self.client.commandExecute("ping")
+        res = self.commandExecute("ping")
         return res.get("status", False)
 
     def check_transaction_status(self, transaction: TradeTransaction) -> bool:
-        res = self.client.commandExecute("tradeTransactionStatus", dict(order=transaction.order_number))
+        res = self.commandExecute("tradeTransactionStatus", dict(order=transaction.order_number))
         return self.verify_response(res)['requestStatus']
 
     def open_position(self, transaction: TradeTransaction) -> TradeTransaction:
@@ -359,6 +454,9 @@ class XTBClient(IBroker):
             'volume': transaction.volume
         }
 
-        res = self.client.commandExecute("tradeTransaction", dict(tradeTransInfo=tt_info))
+        res = self.commandExecute("tradeTransaction", dict(tradeTransInfo=tt_info))
         transaction.order_number = self.verify_response(res)['order']
         return transaction
+
+    # END Custom Section
+
