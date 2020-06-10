@@ -7,8 +7,6 @@ from ..types import Symbol, Commission, User, AccountBalance, TimeStamp, TradeTr
 class IBroker(ABC):
     client = None
     authenticated = False
-    # TODO Implement dummy streaming client.
-    stream = None
 
     @abstractmethod
     def connect(self, user: Union[str, int] = "", password: str = None) -> bool:

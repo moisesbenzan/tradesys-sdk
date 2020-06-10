@@ -9,6 +9,33 @@ from ..interfaces.IEventHandler import IEventHandlers
 from ..types import TradeTransaction, TimeStamp, AccountBalance, User, Symbol, Commission, Credentials
 
 
+class DefaultEventHandler(IEventHandlers):
+
+    def on_price_update(self, data: dict) -> None:
+        print(data)
+
+    def on_trade_update(self, data: dict) -> None:
+        print(data)
+
+    def on_balance_update(self, data: dict) -> None:
+        print(data)
+
+    def on_trade_status_update(self, data: dict) -> None:
+        print(data)
+
+    def on_profit_update(self, data: dict) -> None:
+        print(data)
+
+    def on_news_update(self, data: dict) -> None:
+        print(data)
+
+    def on_candle_update(self, data: dict) -> None:
+        print(data)
+
+    def on_unhandled_update(self, data: dict) -> None:
+        print(data)
+
+
 class XTBStreamingClient(object):
 
     def __init__(self, streaming_session: str, event_handlers: Union[None, IEventHandlers] = None, address: str = 'xapi.xtb.com', port: int = 5125, encrypt=True):
@@ -31,7 +58,10 @@ class XTBStreamingClient(object):
 
         # XTB Params
         self._ssId = streaming_session
-        self.event_handlers = event_handlers
+        if event_handlers is None:
+            self.event_handlers = DefaultEventHandler()
+        else:
+            self.event_handlers = event_handlers
 
         if not self.connect():
             raise Exception("Cannot connect to streaming on " + address + ":" + str(port) + " after " + str(
@@ -130,6 +160,9 @@ class XTBStreamingClient(object):
                 # Anything else
                 self.event_handlers.on_unhandled_update(msg['data'])
 
+    def set_handler(self, new_handler: IEventHandlers):
+        self.event_handlers = new_handler
+
     # XTB subscription stuff
     def subscribePrice(self, symbol):
         self.execute(dict(command='getTickPrices', symbol=symbol, streamSessionId=self._ssId))
@@ -174,6 +207,7 @@ class XTBStreamingClient(object):
 
     def unsubscribeNews(self):
         self.execute(dict(command='stopNews', streamSessionId=self._ssId))
+
 
 class XTBClient(IBroker):
     def __init__(self, address: str = 'xapi.xtb.com', port: int = 5124, encrypt=True):
@@ -324,7 +358,8 @@ class XTBClient(IBroker):
 
     def disconnect(self) -> None:
         self.commandExecute('logout')
-        self.disconnect()
+        self.streaming.disconnect()
+        self._disconnect()
 
     def get_symbol(self, symbol: Union[str, Symbol]) -> Symbol:
         if type(symbol) == str:
