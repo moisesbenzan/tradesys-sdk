@@ -227,7 +227,7 @@ class XTBClient(IBroker):
 
         # XTB Streaming client injection
         self.streamSessionId = None
-        self.streaming = None
+        self.streaming: XTBStreamingClient = None
 
         if not self._connect():
             raise Exception("Cannot connect to API on " + address + ":" + str(port) + " after " + str(
