@@ -297,13 +297,38 @@ class XTBClient(IBroker):
     # START API Section
 
     def execute(self, dictionary):
+        """Sends a JSON formatted request to the API
+
+        Args:
+            dictionary: A serializable python dict object.
+
+        Returns:
+            A raw JSON-encoded string response as received from the API.
+        """
         self._sendObj(dictionary)
         return self._readObj()
 
     def _disconnect(self):
+        """
+        Closes the socket connection to the API.
+
+        Returns:
+            None
+        """
         self.close()
 
-    def commandExecute(self, commandName, arguments=None):
+    def commandExecute(self, commandName: str, arguments: Union[dict, None] = None):
+        """Formats and executes a command into the XTB API.
+        This is the preferred way of executing commands against the API as it ensures that the format is correct.
+
+        Args:
+            commandName: The command to be executed
+            arguments: A dictionary with the command arguments.
+
+        Returns:
+            A raw JSON-encoded string response as received from the API.
+
+        """
         if arguments is None:
             arguments = dict()
         cmd = dict([('command', commandName), ('arguments', arguments)])
@@ -357,6 +382,13 @@ class XTBClient(IBroker):
         return self.connect(credentials.username, credentials.password)
 
     def disconnect(self) -> None:
+        """
+        Cleanly shuts down the API connection, first logging out,
+        then disconnecting the streaming client, and finally the socket.
+
+        Returns:
+            None
+        """
         self.commandExecute('logout')
         self.streaming.disconnect()
         self._disconnect()

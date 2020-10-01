@@ -3,6 +3,10 @@ from ..types import Symbol, TradeTransaction, AccountBalance
 
 
 class IEventHandlers(ABC):
+    """
+    Base class for all streaming client's event handlers. The child classes choose which methods to implement
+    depending on the requirements.
+    """
     @abstractmethod
     def on_price_update(self, data: dict) -> Symbol:
         pass
