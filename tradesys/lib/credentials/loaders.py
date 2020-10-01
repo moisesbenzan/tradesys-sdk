@@ -29,14 +29,13 @@ class JsonPasswordCredentialLoader(ILoader):
         self.credential_file = json_file
 
     def parse(self) -> Credentials:
-        credential = None
 
         with open(self.credential_file, 'r') as creds:
             credential = json.load(creds)
 
-        assert type(credential['username']) in (str, int), "Username must be a string or integer"
-        assert type(credential['password']) in (None, str), "Password must be a string or null"
-        assert type(credential['is_token']) is bool, "is_token must be a boolean expresion: true/false."
+            assert type(credential['username']) in (str, int), "Username must be a string or integer"
+            assert type(credential['password']) in (None, str), "Password must be a string or null"
+            assert type(credential['is_token']) is bool, "is_token must be a boolean expresion: true/false."
 
-        return Credentials(username=credential['username'], password=credential['password'],
-                           is_token=credential['is_token'])
+            return Credentials(username=credential['username'], password=credential['password'],
+                               is_token=credential['is_token'])
