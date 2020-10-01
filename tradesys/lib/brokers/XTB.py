@@ -4,7 +4,7 @@ import ssl
 import json
 import time
 from threading import Thread
-from ..interfaces.IBroker import IBroker
+from ..interfaces.IBroker import IBroker, IStreamingBroker
 from ..interfaces.IEventHandler import IEventHandlers
 from ..types import TradeTransaction, TimeStamp, AccountBalance, User, Symbol, Commission, Credentials
 
@@ -36,7 +36,7 @@ class DefaultEventHandler(IEventHandlers):
         print(data)
 
 
-class XTBStreamingClient(object):
+class XTBStreamingClient(IStreamingBroker):
 
     def __init__(self, streaming_session: str, event_handlers: Union[None, IEventHandlers] = None, address: str = 'xapi.xtb.com', port: int = 5125, encrypt=True):
         # Socket parameters
@@ -137,9 +137,6 @@ class XTBStreamingClient(object):
     def execute(self, dictionary: dict):
         self._sendObj(dictionary)
 
-    def default_handler(self, msg):
-        print(f"Received unhandled tick: {msg}")
-
     def _readStream(self):
         while self._running:
             msg = self._readObj()
@@ -233,7 +230,7 @@ class XTBClient(IBroker):
         self.streaming = None
 
         if not self._connect():
-            raise Exception("Cannot connect to streaming on " + address + ":" + str(port) + " after " + str(
+            raise Exception("Cannot connect to API on " + address + ":" + str(port) + " after " + str(
                 self._maxConnectionRetries) + " retries")
 
     # START Socket section

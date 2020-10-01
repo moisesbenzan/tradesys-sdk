@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Union, List, Tuple
 import difflib
+from ..interfaces.IEventHandler import IEventHandlers
 from ..types import Symbol, Commission, User, AccountBalance, TimeStamp, TradeTransaction, Credentials
 
 
@@ -162,5 +163,64 @@ class IBroker(ABC):
         pass
 
 
-class IStreamingBroker(IBroker, ABC):
-    pass
+class IStreamingBroker(ABC):
+
+    @abstractmethod
+    def set_handler(self, new_handler: IEventHandlers):
+        pass
+
+    @abstractmethod
+    def subscribePrice(self, symbol):
+        pass
+
+    @abstractmethod
+    def subscribePrices(self, symbols):
+        pass
+
+    @abstractmethod
+    def subscribeTrades(self):
+        pass
+
+    @abstractmethod
+    def subscribeBalance(self):
+        pass
+
+    @abstractmethod
+    def subscribeTradeStatus(self):
+        pass
+
+    @abstractmethod
+    def subscribeProfits(self):
+        pass
+
+    @abstractmethod
+    def subscribeNews(self):
+        pass
+
+    @abstractmethod
+    def unsubscribePrice(self, symbol):
+        pass
+
+    @abstractmethod
+    def unsubscribePrices(self, symbols):
+        pass
+
+    @abstractmethod
+    def unsubscribeTrades(self):
+        pass
+
+    @abstractmethod
+    def unsubscribeBalance(self):
+        pass
+
+    @abstractmethod
+    def unsubscribeTradeStatus(self):
+        pass
+
+    @abstractmethod
+    def unsubscribeProfits(self):
+        pass
+
+    @abstractmethod
+    def unsubscribeNews(self):
+        pass
