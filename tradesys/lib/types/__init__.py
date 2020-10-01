@@ -72,7 +72,7 @@ class Symbol(object):
                  expiration: Union[None, TimeStamp] = None, high: float = 0.0, initial_margin: float = 0.0,
                  leverage: float = 0.0, long_only: bool = False, min_lot: float = 0.0, max_lot: float = 0.0,
                  lot_step: float = 0.0, low: float = 0.0, pip_precision: int = 1, price_precision: int = 1,
-                 shortable: bool = False, time: Union[None, TimeStamp] = None):
+                 shortable: bool = False, time: Union[None, TimeStamp] = None, quote_level: int = -1):
 
         self.ticker = ticker
         self.ask = ask
@@ -95,6 +95,7 @@ class Symbol(object):
         self.pip_precision = pip_precision
         self.price_precision = price_precision
         self.shortable = shortable
+        self.quote_level = quote_level
 
         if time is None:
             self.time = TimeStamp(float(datetime.utcnow().timestamp()), unix=True)

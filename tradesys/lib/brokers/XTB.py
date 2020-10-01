@@ -161,10 +161,11 @@ class XTBStreamingClient(IStreamingBroker):
         self.event_handlers = new_handler
 
     # XTB subscription stuff
-    def subscribePrice(self, symbol):
-        self.execute(dict(command='getTickPrices', symbol=symbol, streamSessionId=self._ssId))
+    def subscribePrice(self, symbol, max_level: int = 2, receive_interval: int = 200):
+        self.execute(dict(command='getTickPrices', symbol=symbol, streamSessionId=self._ssId, maxLevel=max_level,
+                          minArrivalTime=receive_interval))
 
-    def subscribePrices(self, symbols):
+    def subscribePrices(self, symbols, max_level: int = 2, receive_interval: int = 200):
         for symbolX in symbols:
             self.subscribePrice(symbolX)
 

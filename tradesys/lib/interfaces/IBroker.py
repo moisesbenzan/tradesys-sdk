@@ -170,11 +170,11 @@ class IStreamingBroker(ABC):
         pass
 
     @abstractmethod
-    def subscribePrice(self, symbol):
+    def subscribePrice(self, symbol, max_level: int, receive_interval: int):
         pass
 
     @abstractmethod
-    def subscribePrices(self, symbols):
+    def subscribePrices(self, symbols, max_level: int, receive_interval: int):
         pass
 
     @abstractmethod
